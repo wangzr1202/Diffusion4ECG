@@ -103,7 +103,7 @@ $$
 \boldsymbol{x}_{t-1} +
 C
 $$
-根据二次函数的展开式：
+根据二次函数(高斯分布的PDF)的展开式：
 $$
 \tilde{\mu}_t(\boldsymbol{x}_{t}, \boldsymbol{x}_{0}) = 
 \frac{(\frac{\sqrt{\alpha_t}\boldsymbol{x}_{t}}{\beta_t} + 
@@ -161,7 +161,7 @@ $$
 - 直接预测$\boldsymbol{x}_{0}$；
 - 直接预测$\epsilon$。（采用）
 
-在此之前，我们需要先完成对MAP的优化，直接MAP不可求解，所以对于此类生成模型均为计算MLE，我们先构建一个似然函数。
+在此之前，我们需要先完成对MAP的优化，直接MAP不可求解，所以 对于此类生成模型均为计算MLE，我们先构建一个似然函数。
 
 >实际上DDPM本质上做的一件事就是把MLE化简优化成一个MSE，生成模型本来是不存在MSE的。
 
@@ -305,6 +305,8 @@ $$
 
 
 
+<img src="/Users/wangzirui/Diffusion4ECG/md-figure/DDPM-train--sample.png" alt="DDPM-train--sample" style="zoom:50%;" />
+
 
 
 # Improved DDPM
@@ -317,7 +319,7 @@ $$
 
 # Score-baesd model
 
-`梯度：`分数模型中使用梯度来表示分数，是对数概率密度函数的梯度方向。
+`分数：`分数模型中使用梯度来表示分数，是对数概率密度函数的梯度方向。
 $$
 \frac{\partial \log p_{data}(x)}{\partial x}
 $$
@@ -325,11 +327,154 @@ $$
 
 **如果在采样过程中沿着分数的方向走，就能走到数据分布的高概率密度区域，最终生成的样本就会符合原数据分布。**
 
+`朗之万动力学模型：`朗之万采样从一个已知的先验分布中采样一个初始样本，然后计算分数，将该样本向高分数（高概率密度函数）区域靠近。同时为了保证随机性（如果没有随机性，那生成的样本同质化严重，经过超多迭代都会收敛到最高对数概率密度函数最高的地方），朗之万采样方程带有随即项（布朗运动）。
+
+------
+
+我们从最后的目标出发，我们的优化目标为：
+$$
+\frac12 \mathbb{E}_{p_{data}} [||s_{\theta}(\boldsymbol{x}) - \nabla_{\boldsymbol{x}}\log p_{data}(\boldsymbol{x})||^2_2]
+$$
+其中，$\theta$表示模型参数，$s_{\theta}$表示预测网络，后一项梯度项为分数，$p_{data}$为真实分布。
+
+对这样的优化问题显然存在一个问题就是我们未知真实分布，如果知道真实分布那也不用求了，所以我们先想办法去除掉真实分布项，我们采用分数匹配的方法得到的化简结果为：
+$$
+\mathbb{E}_{p_{data}}[tr(\frac{\partial s_{\theta}(\boldsymbol{x})}{\partial \boldsymbol{x}})
++ \frac12 ||s_{\theta}(\boldsymbol{x})||^2_2]
+$$
+
+> [!NOTE]
+>
+> 推导过程就是一个分部积分的过程，我们首先对优化目标的公式进行展开
+> $$
+> \frac12 \mathbb{E}_{p_{data}}[
+> ||s_{\theta}(\boldsymbol{x})||^2_2 - 2(\frac{\partial \log p_{data}(\boldsymbol{x}) }{\partial \boldsymbol{x}})^T s_{\theta}(\boldsymbol{x}) + ||\frac{\partial \log p_{data}(\boldsymbol{x}) }{\partial \boldsymbol{x}}||^2_2
+> ]
+> $$
+> 只有第一项和第二项带有$\theta$表示和网络有关，最后一项和模型参数无关，而第一项直接就可以通过模型计算出来，我们关注第二项，写成积分形式，我们有：（这里把$\boldsymbol{x}$看作向量，梯度项表示为标量对向量求导，得到的维度为$m \times 1$，而模型预测项和分数的维度大小一致，所以要有转置，最后相乘得到的结果维度为$1 \times 1$；在写法上，对于模型预测项得到的结果，多个维度可以看作是多个神经元输出的结果，所以结果写成如下形式）
+> $$
+> \int p_{data}(\boldsymbol{x})[-2(\frac{\partial \log p_{data}(\boldsymbol{x}) }{\partial \boldsymbol{x}})^T s_{\theta}(\boldsymbol{x})]d\boldsymbol{x} = 
+> \int p_{data}(\boldsymbol{x})[\sum_{i} -2(\frac{\partial \log p_{data}(\boldsymbol{x}) }{\partial x_i})s_{\theta,i}(\boldsymbol{x})]d\boldsymbol{x}
+> $$
+> 继续化简，我们有：
+> $$
+> \sum_{i}\int p_{data}(\boldsymbol{x})[-2(\frac{\partial \log p_{data}(\boldsymbol{x}) }{\partial x_i})s_{\theta,i}(\boldsymbol{x})]d\boldsymbol{x} = 
+> \sum_{i}\int -2p_{data}(\boldsymbol{x})\frac{1}{p_{data}(\boldsymbol{x})}
+> \frac{\partial p_{data}(\boldsymbol{x})}{\partial x_i}s_{\theta,i}(\boldsymbol{x})d\boldsymbol{x}
+> $$
+> 所以，
+> $$
+> -2 \int \sum_i \frac{\partial p_{data}(\boldsymbol{x})}{\partial x_i}s_{\theta,i}(\boldsymbol{x})d\boldsymbol{x} = 
+> -2 \int \sum_i (\frac{\partial (p_{data}(\boldsymbol{x}) s_{\theta,i}(\boldsymbol{x}))}{\partial x_i} - \frac{\partial s_{\theta,i}(\boldsymbol{x})}{\partial x_i}p_{data}(\boldsymbol{x}))d\boldsymbol{x}
+> $$
+> 我们作出假设$p(\infty) = 0$，
+> $$
+> -2 \int \sum_i (\frac{\partial (p_{data}(\boldsymbol{x}) s_{\theta,i}(\boldsymbol{x}))}{\partial x_i})d\boldsymbol{x} = p_{data}(\boldsymbol{x}) s_{\theta}(\boldsymbol{x})|^{+\infty}_{-\infty} = 0
+> $$
+> 继续化简，我们可以得到：
+> $$
+> -2 \int \sum_i (\frac{\partial (p_{data}(\boldsymbol{x}) s_{\theta,i}(\boldsymbol{x}))}{\partial x_i} - \frac{\partial s_{\theta,i}(\boldsymbol{x})}{\partial x_i}p_{data}(\boldsymbol{x}))d\boldsymbol{x} = 
+> 2 \int \sum_i \frac{\partial s_{\theta,i}(\boldsymbol{x})}{\partial x_i}p_{data}(\boldsymbol{x})d\boldsymbol{x} \\
+> = 2 \int p_{data}(\boldsymbol{x}) tr(\frac{\partial s_{\theta}(\boldsymbol{x})}{\partial \boldsymbol{x}})d\boldsymbol{x} 
+> = 2\mathbb{E}_{p_{data}}(tr(\frac{\partial s_{\theta}(\boldsymbol{x})}{\partial \boldsymbol{x}}))
+> $$
+> 此时再加上最开始拆开分部积分的第一项喊模型参数的项，我们就可以得到最后的结果。
+
+但是对于矩阵的trace来说，依旧存在较高复杂度，所以给出两种优化方案：
+
+`Sliced Score Matching：`通过引入随机向量（均值为0，协方差为单位阵）来解决。
+
+`Denosing Score Matching：`设定一个已知的分布去替代原始未知分布，用$q_\sigma(\widetilde{\boldsymbol{x}}) \approx p_{data}(\boldsymbol{x})$，其中：
+$$
+q_\sigma(\widetilde{\boldsymbol{x}}) = \int q_\sigma(\widetilde{\boldsymbol{x}}|\boldsymbol{x})p_{data}(\boldsymbol{x})d\boldsymbol{x}
+$$
+这要求我们用极小噪声处理数据，只有在噪声很小的情况下q分布和p分布才近似等同。所以我们的优化目标可以改写成：
+$$
+\frac12 \mathbb{E}_{q_{\sigma}}(||s_{\theta}(\widetilde{\boldsymbol{x}})
+- \frac{\partial \log q_\sigma(\widetilde{\boldsymbol{x}})}{\partial \widetilde{\boldsymbol{x}}}||_2^2)
+$$
+已有论文证明：（ESM=DSM）
+$$
+\frac12 \mathbb{E}_{q_{\sigma}}(||s_{\theta}(\widetilde{\boldsymbol{x}})
+- \frac{\partial \log q_\sigma(\widetilde{\boldsymbol{x}})}{\partial \widetilde{\boldsymbol{x}}}||_2^2)
+= \frac12 \mathbb{E}_{q_{\sigma}(\widetilde{\boldsymbol{x}}|\boldsymbol{x})p_{data}(\boldsymbol{x})}(||s_{\theta}(\widetilde{\boldsymbol{x}})
+- \frac{\partial \log q_\sigma(\widetilde{\boldsymbol{x}}|\boldsymbol{x})}{\partial \widetilde{\boldsymbol{x}}}||_2^2)
+$$
+其中我们预先设定的分布是$q_{\sigma}(\widetilde{\boldsymbol{x}}|\boldsymbol{x}) \sim \mathcal{N}(\widetilde{\boldsymbol{x}};\boldsymbol{x}, \sigma^2 \boldsymbol{I})$，写成直接的形式就是：
+$$
+\widetilde{\boldsymbol{x}} = \boldsymbol{x} + \sigma \boldsymbol{\epsilon},\quad 
+\boldsymbol{\epsilon} \sim \mathcal{N}(0, \boldsymbol{I})
+$$
+所以完全从分布的角度来看的情况下，喂给模型的均为加噪后的数据，模型学到的也是噪声分布，只有当噪声足够小的情况下，我们才能把学到的分布近似等同于真实分布。
+
+模型通过分数训练完成后，我们通过朗之万采样采样获得样本，我们先看没有随机项的采样表示：
+$$
+\widetilde{\boldsymbol{x}}_{t} = \widetilde{\boldsymbol{x}}_{t-1} +
+\frac{\partial \log q(\widetilde{\boldsymbol{x}}_{t-1})}{\partial \widetilde{\boldsymbol{x}}_{t-1}}
+$$
+其中$q$分布近似等同不加噪声的原始分布，t是取样的迭代步数，经过无穷步迭代，所有样本都会趋近于相同的位置，因为优化路线都是最大对数概率密度函数，所以我们需要加入随机项让采样得到的样本的多样性更强。
+$$
+\widetilde{\boldsymbol{x}}_{t} = \widetilde{\boldsymbol{x}}_{t-1} +
+\frac{\epsilon}{2}s_{\theta}(\widetilde{\boldsymbol{x}}_{t-1})+
+\sqrt{\epsilon}\boldsymbol{z}_{t-1}
+$$
+其中$\epsilon$是步长，$\boldsymbol{z}_{t}$是随机噪声，加入扰动后样本的多样性明显会更强，当步长趋近于0同时t趋近于无穷步数时，我们可以认为我们构造的样本基本等同于原始分布。
+
+得到了训练策略和采样策略的大概思想，下面我们给出具体的实现操作，首先对于loss。
 
 
-`朗之万动力学模型：`
 
 
+
+
+
+
+
+## SDE
+
+一阶线性随机微分方程可以写为：
+$$
+dY = f(X, Y)dt
+$$
+随机微分方程的一般表达形式可以写为：（Ito process）
+$$
+dX(t) = f(X(t),t)dt + g(t)dW
+$$
+其中随机过程$\{X(t), t\in T=[0,T]\}$，$f,g$均为可定义的函数（在AI中为超参），$W(t)$为维纳过程/布朗运动，其中$W(t)\sim \mathcal{N}(0,c^2t)$，标准布朗运动的取值为$c=1$​。标准布朗运动的差分方程为：
+$$
+(W(t + \Delta t) - W(t) )\sim \mathcal{N}(0, \Delta t), \Delta t \rightarrow 0
+$$
+把Ito process写作更直观的diffusion方程：
+$$
+\boldsymbol{x}_{t+\Delta t} = \boldsymbol{x}_{t} +
+f_t(\boldsymbol{x}_{t})\Delta t + g_tdW
+$$
+根据差分方程对标准布朗运动的部分进行展开，我们有：
+$$
+\boldsymbol{x}_{t+\Delta t} = \boldsymbol{x}_{t} +
+f_t(\boldsymbol{x}_{t})\Delta t + g_t(\sqrt{\Delta t}\epsilon), \quad 
+\epsilon \sim \mathcal{N}(0, \boldsymbol{I}), \quad
+dW \sim \mathcal{N}(0, \Delta t)
+$$
+写成概率的形式，也就是采样的形式： 
+$$
+p(\boldsymbol{x}_{t+\Delta t}|\boldsymbol{x}_{t}) = 
+\mathcal{N}(\boldsymbol{x}_{t+\Delta t}; \boldsymbol{x}_{t} +
+f_t(\boldsymbol{x}_{t})\Delta t, g_t^2\Delta t \boldsymbol{I})
+$$
+
+
+## DDPM和SMLD的统一性
+
+
+
+
+
+
+
+
+
+\boldsymbol{x}_{t}
 
 
 
@@ -360,6 +505,14 @@ $$
 # VAE
 
 
+
+
+
+
+
+
+
+# 生成模型总结
 
 
 
@@ -411,4 +564,52 @@ $$
 对于MLE来说，目标任务是$\max P(x|\theta)$，其中$\theta$是变量，$x$为观测到的数据，常规做法是令$\log'(P(x|\theta)) = 0$解得$\theta$。
 
 对于MAP来说，目标任务是$\max P(\theta|x)$，非常直观，给定确定的数据x下，求一个最大的$P(\theta|x)$。
+
+
+
+**标量关于向量的导数**
+
+若$\boldsymbol{x}\in \mathbb{R}^m, y \in \mathbb{R}$，（可以看作是$y = \boldsymbol{a}^T\boldsymbol{x}, \boldsymbol{a}\in \mathbb{R}^m$，一行乘一列）那么
+$$
+\frac{\partial y}{\partial \boldsymbol{x}} = [\frac{\partial y}{\partial x_1},
+\frac{\partial y}{\partial x_2},\dots,\frac{\partial y}{\partial x_m}]^T
+\in \mathbb{R}^{m\times 1}
+$$
+**向量关于标量的导数**
+
+若$x\in \mathbb{R}, \boldsymbol{y}\in \mathbb{R}^n$，（可以看作是$\boldsymbol{y} = \boldsymbol{a}x, \boldsymbol{a}\in \mathbb{R}^n$）那么
+$$
+\frac{\partial \boldsymbol{y}}{\partial x} = [\frac{\partial y_1}{\partial x},
+\frac{\partial y_2}{\partial x}, \dots, \frac{\partial y_n}{\partial x}]
+\in \mathbb{R}^{1 \times n}
+$$
+**向量关于向量的导数**
+
+若$\boldsymbol{x}\in \mathbb{R}^m, \boldsymbol{y}\in \mathbb{R}^n$，（可以看作是$\boldsymbol{y} = \boldsymbol{A}\boldsymbol{x}, \boldsymbol{A}\in \mathbb{R}^{n\times m}$）那么
+$$
+\frac{\partial \boldsymbol{y}}{\partial \boldsymbol{x}} = M_{Jacobian}^T =
+\begin{bmatrix}
+\frac{\partial y_1}{\partial x_1} & \frac{\partial y_1}{\partial x_2} & \dots & 
+\frac{\partial y_1}{\partial x_m}\\
+\frac{\partial y_2}{\partial x_1} & \frac{\partial y_2}{\partial x_2} & \dots & 
+\frac{\partial y_2}{\partial x_m}\\
+\vdots & \vdots & \dots & \vdots \\
+\frac{\partial y_n}{\partial x_1} & \frac{\partial y_n}{\partial x_2} & \dots & 
+\frac{\partial y_n}{\partial x_m} & 
+\end{bmatrix} ^T
+\in \mathbb{R}^{m \times n}
+$$
+
+
+**常见向量导数**
+$$
+\frac{\partial \boldsymbol{a}^T\boldsymbol{X}\boldsymbol{b}}{\partial \boldsymbol{X}} = 
+\boldsymbol{a}\boldsymbol{b}^T,\quad
+\frac{\partial \boldsymbol{a}^T\boldsymbol{X}^T\boldsymbol{b}}{\partial \boldsymbol{X}} = 
+\boldsymbol{b}\boldsymbol{a}^T
+$$
+
+
+
+
 
