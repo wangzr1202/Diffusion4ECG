@@ -420,7 +420,54 @@ $$
 $$
 其中$\epsilon$是步长，$\boldsymbol{z}_{t}$是随机噪声，加入扰动后样本的多样性明显会更强，当步长趋近于0同时t趋近于无穷步数时，我们可以认为我们构造的样本基本等同于原始分布。
 
-得到了训练策略和采样策略的大概思想，下面我们给出具体的实现操作，首先对于loss。
+得到了训练策略和采样策略的大概思想，我们使用加噪的方案，下面我们给出具体的实现操作，首先对于loss。
+
+> [!IMPORTANT]
+>
+> 在上文提到的加噪方案中，我们需要加一个**很小**的噪声来保证构造的新分布和原分布近似等同，但是对于分数匹配这一做法来说，很容易出现loss震荡，可以从**流形假设**来看：
+>
+> 流形假设说的是数据总是倾向分布于低维空间，简单来说就是数据的特征维度不是所有维度都是有用的，用一个二维平面直角坐标系表示一个圆心在原点的圆显然有一个维度多余了，如果用极坐标的话只需要一个参数就可以了。
+>
+> 对于分数匹配模型来说，分数（梯度）的计算是针对于全部的编码空间的，很有可能出现“没有用”的维度（对于分布而言，$p_{data}(\boldsymbol{x})$并没有被占满，即$\boldsymbol{x}$只占据了分布的一部分空间，形象来说，原始分布存在于整个二维平面直角坐标系，但是我们的输入$\boldsymbol{x}$只存在于直角坐标系中的一个单位矩形），在这种情况下可能就会出现loss震荡的情况。
+>
+> 一个合理的解决方案就是拓宽我们$\boldsymbol{x}$的分布范围，让$\boldsymbol{x}$尽可能分布在整个分布空间，这样的话就打破了流形。对于这样的想法可以使用高斯噪声，高斯噪声是分布在整个分布空间的，让$\boldsymbol{x}$加上高斯噪声就可以“打散”原来的$\boldsymbol{x}$的分布空间。
+>
+> 但是这样做的问题也存在，加噪声的前提是要加一个足够大的噪声，才能让$\boldsymbol{x}$分布在更大的原始分布空间。但这和原本的加噪方案加很小噪声有冲突，所以我们设计一个梯度噪声。
+
+关于梯度噪声等级的设计，我们先用较大的噪声打散分布空间，然后用较小的噪声确保构造的分布和原始分布的相似性，所以我们的loss可以被写成：
+$$
+\frac12 \mathbb{E}_{q_{\sigma}(\widetilde{\boldsymbol{x}}|\boldsymbol{x})p_{data}(\boldsymbol{x})}(||s_{\theta}(\widetilde{\boldsymbol{x}})
+- \frac{\partial \log q_\sigma(\widetilde{\boldsymbol{x}}|\boldsymbol{x})}{\partial \widetilde{\boldsymbol{x}}}||_2^2)
+=
+\frac12 \mathbb{E}_{q_{\sigma}(\widetilde{\boldsymbol{x}}|\boldsymbol{x})p_{data}(\boldsymbol{x})}(||s_{\theta}(\widetilde{\boldsymbol{x}},\sigma)
+- \frac{\partial \log q_\sigma(\widetilde{\boldsymbol{x}}|\boldsymbol{x})}{\partial \widetilde{\boldsymbol{x}}}||_2^2)
+$$
+而我们预先设计的分布为$q_{\sigma}(\widetilde{\boldsymbol{x}}|\boldsymbol{x}) \sim \mathcal{N}(\widetilde{\boldsymbol{x}};\boldsymbol{x}, \sigma^2 \boldsymbol{I})$，所以我们有：
+$$
+f_{q}(\widetilde{\boldsymbol{x}}) = \frac{1}{\sqrt{2\pi}\sigma}e^{
+-\frac{(\widetilde{\boldsymbol{x}} - \boldsymbol{x})^2}{2\sigma^2}
+}
+$$
+进一步化简，
+$$
+\frac{\partial \log q_\sigma(\widetilde{\boldsymbol{x}}|\boldsymbol{x})}{\partial \widetilde{\boldsymbol{x}}}
+=
+\frac{
+\partial (-\frac{(\widetilde{\boldsymbol{x}} - \boldsymbol{x})^2}{2\sigma^2})
+}{\partial \widetilde{\boldsymbol{x}}}
+=
+\frac{\boldsymbol{x} - \widetilde{\boldsymbol{x}}}{\sigma^2}
+$$
+所以我们就得到某一个确定噪声等级下的loss，可以写成：
+$$
+\mathcal{L}(\theta, \sigma) = \frac12 \mathbb{E}_{q_{\sigma}(\widetilde{\boldsymbol{x}}|\boldsymbol{x})p_{data}(\boldsymbol{x})}(||s_{\theta}(\widetilde{\boldsymbol{x}},\sigma)
+- \frac{\boldsymbol{x} - \widetilde{\boldsymbol{x}}}{\sigma^2}||_2^2)
+$$
+对于不同的噪声级别，我们进行加权组合，
+$$
+\mathcal{L}_{all} = \lambda_i 
+$$
+
 
 
 
