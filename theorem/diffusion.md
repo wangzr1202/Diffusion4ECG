@@ -465,8 +465,22 @@ $$
 $$
 对于不同的噪声级别，我们进行加权组合，
 $$
-\mathcal{L}_{all} = \lambda_i 
+\mathcal{L}_{all} = \Sigma_i \lambda_i \mathcal{L}(\theta, \sigma_i)
 $$
+`权重选择`：我们希望权重选择可以消除噪声数值大小对于loss的平衡（不希望大噪声在loss计算中因为数值较大占主导，希望大小噪声对于loss的贡献一致），所以直观而言，$\lambda_i$的大小应该和$\sigma_i$的大小直接相关。
+
+作者~~根据炼丹经验~~得到$s_{\theta}(\widetilde{\boldsymbol{x}},\sigma——i) = \frac{1}{\sigma_i}$的量级，所以$\lambda_i$的量级为$\sigma^2$，带入可以得到
+$$
+\lambda_i ||s_{\theta}(\widetilde{\boldsymbol{x}},\sigma_i)
+- \frac{\boldsymbol{x} - \widetilde{\boldsymbol{x}}}{\sigma^2}||_2^2
+= 
+||\sigma_i s_{\theta}(\widetilde{\boldsymbol{x}},\sigma_i)
+- \frac{\boldsymbol{x} - \widetilde{\boldsymbol{x}}}{\sigma}||_2^2
+$$
+同时我们有$\widetilde{\boldsymbol{x}} = \boldsymbol{x} + \sigma \boldsymbol{\epsilon}$，所以上式的后一项是标准高斯噪声相关，与$\sigma$无关，而先前我们也提到模型预测结果的量级，所以最后得到loss的量级为1。
+
+
+
 
 
 
@@ -544,12 +558,6 @@ $$
 
 
 
-
-
-
-
-
-# VAE
 
 
 
