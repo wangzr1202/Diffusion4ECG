@@ -161,7 +161,7 @@ $$
 - 直接预测$\boldsymbol{x}_{0}$；
 - 直接预测$\epsilon$。（采用）
 
-在此之前，我们需要先完成对MAP的优化，直接MAP不可求解，所以 对于此类生成模型均为计算MLE，我们先构建一个似然函数。
+在此之前，我们需要先完成对MAP的优化，直接MAP不可求解，所以对于此类生成模型均为计算MLE，我们先构建一个似然函数。
 
 >实际上DDPM本质上做的一件事就是把MLE化简优化成一个MSE，生成模型本来是不存在MSE的。
 
@@ -236,7 +236,7 @@ $$
 + \log \frac{q(\boldsymbol{x}_{T}|\boldsymbol{x}_{0})}{{p_{\theta}(\boldsymbol{x}_{0}|\boldsymbol{x}_{1})}}
 \end{align}
 $$
-代入得到结果：
+代入得到结果：*
 $$
 \mathbb{E}_{q}\log 
 \frac{q(\boldsymbol{x}_{1:T}|\boldsymbol{x}_{0})}
@@ -479,14 +479,19 @@ $$
 $$
 同时我们有$\widetilde{\boldsymbol{x}} = \boldsymbol{x} + \sigma \boldsymbol{\epsilon}$，所以上式的后一项是标准高斯噪声相关，与$\sigma$无关，而先前我们也提到模型预测结果的量级，所以最后得到loss的量级为1。
 
+$$
+\begin{align*}
+a &= b\\
+c &= dddddddd
 
 
+\end{align*}
+$$
 
-
-
-
-
-
+$$
+\label{1555}
+123
+$$
 
 
 
@@ -530,12 +535,6 @@ $$
 
 
 
-
-
-
-
-
-\boldsymbol{x}_{t}
 
 
 
