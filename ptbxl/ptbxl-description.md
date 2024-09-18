@@ -84,30 +84,6 @@ Macro Precision对所有标签一视同仁，无论标签在数据集中出现�
 
 
 
-1. **[The ECG Signal Monitoring System Using Machine Learning Methods and LoRa Technology](https://www.par.pl/en/content/download/15455/191436/file/ECGSignalMonitoringSystemUsingMachineLearningMethodsLoRaTechnology.pdf)**  
-   *Published:* 2024  
-   *Summary:* This paper focuses on the classification of ECG signals using the PTB-XL database, employing machine learning methods integrated with LoRa technology.
-
-2. **[Design of an Integrated Arrhythmia Detection Model using Connectivity Features and Multivariate Time Series Classification](https://wseas.com/journals/isa/2024/a185109-004(2024).pdf)**  
-   *Published:* 2024  
-   *Summary:* This research uses the PTB-XL dataset and a multivariate time series classification approach to detect arrhythmia.
-
-3. **[Design of a novel recurrent neural network design with augmented activation for classification of ECG signals](https://www.academia.edu/download/89058563/Design_of_a_novel_recurrent_neural_network_design_with_augmented_activation_for_classification_of_ECG_signals.pdf)**  
-   *Published:* 2024  
-   *Summary:* This study introduces a novel recurrent neural network model for ECG signal classification, validated on multiple datasets including PTB-XL.
-
-4. **[Interpretable Hybrid Multichannel Deep Learning Model for Heart Disease Classification Using 12-leads ECG Signal](https://ieeexplore.ieee.org/abstract/document/10579752/)**  
-   *Published:* 2024  
-   *Summary:* The paper discusses a deep learning model that improves heart disease classification using the PTB-XL dataset.
-
-5. **[Improving deep-learning electrocardiogram classification with an effective coloring method](https://www.sciencedirect.com/science/article/pii/S0933365724000514)**  
-   *Published:* 2024  
-   *Summary:* The research enhances ECG classification using the PTB-XL dataset by applying a new coloring method.
-
-
-
-
-
 
 
 ## model
