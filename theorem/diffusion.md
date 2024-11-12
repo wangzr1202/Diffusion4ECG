@@ -236,7 +236,7 @@ $$
 + \log \frac{q(\boldsymbol{x}_{T}|\boldsymbol{x}_{0})}{{p_{\theta}(\boldsymbol{x}_{0}|\boldsymbol{x}_{1})}}
 \end{align}
 $$
-代入得到结果：*
+代入得到结果：
 $$
 \mathbb{E}_{q}\log 
 \frac{q(\boldsymbol{x}_{1:T}|\boldsymbol{x}_{0})}
@@ -378,7 +378,7 @@ $$
 > = 2 \int p_{data}(\boldsymbol{x}) tr(\frac{\partial s_{\theta}(\boldsymbol{x})}{\partial \boldsymbol{x}})d\boldsymbol{x} 
 > = 2\mathbb{E}_{p_{data}}(tr(\frac{\partial s_{\theta}(\boldsymbol{x})}{\partial \boldsymbol{x}}))
 > $$
-> 此时再加上最开始拆开分部积分的第一项喊模型参数的项，我们就可以得到最后的结果。
+> 此时再加上最开始拆开分部积分的第一项含模型参数的项，我们就可以得到最后的结果。
 
 但是对于矩阵的trace来说，依旧存在较高复杂度，所以给出两种优化方案：
 
